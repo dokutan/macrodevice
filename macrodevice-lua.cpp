@@ -54,6 +54,7 @@ extern "C"
 #include "backends/macrodevice-libusb.h"
 #endif
 
+
 // help message
 //**********************************************************************
 void print_help()
@@ -62,12 +63,14 @@ void print_help()
 	std::cout << "-h --help\tprint this message\n";
 	std::cout << "-c --config\tlua file to be loaded (required)\n";
 	std::cout << "-f --fork\tfork into the background\n";
+	std::cout << "-u --user\tuser id to drop privileges to (requires -g)\n";
+	std::cout << "-g --group\tgroup id to drop privileges to (requires -u)\n";
 }
 
 
 // lua stack dump for debugging purposes
 //**********************************************************************
-void stackDump( lua_State *l )
+void stack_dump( lua_State *l )
 {
 	std::cout << "------\n";
 	for( int i = lua_gettop( l ); i > 0; i-- ){
@@ -87,11 +90,35 @@ void stackDump( lua_State *l )
 }
 
 
+// drop root privileges to a specified user and group id
+//**********************************************************************
+int drop_root( int uid, int gid )
+{
+	// important: set gid before uid
+	if( getuid() == 0 ) // check if root
+	{
+		if( setregid( gid, gid ) != 0 ) // set real and effective gid
+		{
+			return 1;
+		}
+		if( setreuid( uid, uid ) != 0 ) // set real and effective uid
+		{
+			return 1;
+		}
+	}
+	else
+	{
+		// if not root
+		return 1;
+	}
+	
+	return 0;
+}
 
 
 // template function to handle all the device management and macro execution 
 //**********************************************************************
-template< class T > int run_macros( T device, lua_State *L )
+template< class T > int run_macros( T device, lua_State *L, bool drop_privs, int uid, int gid )
 {
 	
 	// get and convert settings table from lua 
@@ -158,6 +185,16 @@ template< class T > int run_macros( T device, lua_State *L )
 		return 1;
 	}
 	
+	// if root: drop root privileges if requested
+	if( drop_privs )
+	{
+		if( drop_root( uid, gid ) != 0 )
+		{
+			std::cerr << "Error: could not drop privileges\n";
+			device.close_device();
+			return 1;
+		}
+	}
 	
 	// wait for input
 	std::vector< std::string > event;
@@ -231,15 +268,20 @@ int main( int argc, char *argv[] )
 			{"help", no_argument, 0, 'h'},
 			{"config", required_argument, 0, 'c'},
 			{"fork", no_argument, 0, 'f'},
+			{"user", no_argument, 0, 'u'},
+			{"group", no_argument, 0, 'g'},
 			{0, 0, 0, 0}
 		};
 		
 		// parse commandline options
 		int c, option_index = 0;
-		bool flag_fork = false, flag_config = false;
-		std::string string_config;
+		bool flag_fork = false, flag_config = false, flag_user = false, flag_group = false;
+		std::string string_config, string_user, string_group;
 		
-		while( (c = getopt_long( argc, argv, "hc:f", long_options, &option_index ) ) != -1 )
+		int target_user = 0, target_group = 0; // uid and gid for privilege dropping
+		bool drop_privileges = false;
+		
+		while( (c = getopt_long( argc, argv, "hc:fu:g:", long_options, &option_index ) ) != -1 )
 		{
 			switch( c )
 			{
@@ -254,7 +296,16 @@ int main( int argc, char *argv[] )
 				case 'f':
 					flag_fork = true;
 					break;
+				case 'u':
+					flag_user = true;
+					string_user = optarg;
+					break;
+				case 'g':
+					flag_group = true;
+					string_group = optarg;
+					break;
 				case '?':
+					return 1;
 					break;
 				default:
 					break;
@@ -268,6 +319,26 @@ int main( int argc, char *argv[] )
 			return 1;
 		}
 		
+		// are user and group id specified ? → enable privilege dropping
+		if( !flag_user != !flag_group )
+		{
+			std::cerr << "Missing arguments: -u and -g need to be used together\n";
+			return 1;
+		}
+		else if( flag_user && flag_group )
+		{
+			drop_privileges = true;
+			try
+			{
+				target_user = std::stoi( string_user, 0, 10 );
+				target_group = std::stoi( string_group, 0, 10 );
+		}
+			catch( std::exception &e )
+			{
+				std::cerr << "Invalid argument: -u and -g require a number\n";
+				return 1;
+			}
+		}
 		
 		// lua initialisation
 		//******************************************************************
@@ -324,7 +395,7 @@ int main( int argc, char *argv[] )
 		if( backend == "hidapi" )
 		{
 			#ifdef USE_BACKEND_HIDAPI
-			run_macros<macrodevice::device_hidapi>( macrodevice::device_hidapi(), L );
+			run_macros<macrodevice::device_hidapi>( macrodevice::device_hidapi(), L, drop_privileges, target_user, target_group );
 			#else
 			std::cerr << "Error: Backend " << backend << " is not enabled\n";
 			#endif
@@ -332,7 +403,7 @@ int main( int argc, char *argv[] )
 		else if( backend == "libevdev" )
 		{
 			#ifdef USE_BACKEND_LIBEVDEV
-			run_macros<macrodevice::device_libevdev>( macrodevice::device_libevdev(), L );
+			run_macros<macrodevice::device_libevdev>( macrodevice::device_libevdev(), L, drop_privileges, target_user, target_group );
 			#else
 			std::cerr << "Error: Backend " << backend << " is not enabled\n";
 			#endif
@@ -340,7 +411,7 @@ int main( int argc, char *argv[] )
 		else if( backend == "libusb" )
 		{
 			#ifdef USE_BACKEND_LIBUSB
-			run_macros<macrodevice::device_libusb>( macrodevice::device_libusb(), L );
+			run_macros<macrodevice::device_libusb>( macrodevice::device_libusb(), L, drop_privileges, target_user, target_group );
 			#else
 			std::cerr << "Error: Backend " << backend << " is not enabled\n";
 			#endif
