@@ -54,6 +54,9 @@ extern "C"
 #include "backends/macrodevice-libusb.h"
 #endif
 
+#ifdef USE_BACKEND_SERIAL
+#include "backends/macrodevice-serial.h"
+#endif
 
 // help message
 //**********************************************************************
@@ -412,6 +415,14 @@ int main( int argc, char *argv[] )
 		{
 			#ifdef USE_BACKEND_LIBUSB
 			run_macros<macrodevice::device_libusb>( macrodevice::device_libusb(), L, drop_privileges, target_user, target_group );
+			#else
+			std::cerr << "Error: Backend " << backend << " is not enabled\n";
+			#endif
+		}
+		else if( backend == "serial" )
+		{
+			#ifdef USE_BACKEND_SERIAL
+			run_macros<macrodevice::device_serial>( macrodevice::device_serial(), L, drop_privileges, target_user, target_group );
 			#else
 			std::cerr << "Error: Backend " << backend << " is not enabled\n";
 			#endif

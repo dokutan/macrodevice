@@ -4,6 +4,7 @@
 use_backend_hidapi = true
 use_backend_libevdev = true
 use_backend_libusb = true
+use_backend_serial = true
 
 # variables
 BIN_DIR = /usr/bin
@@ -26,6 +27,10 @@ ifdef use_backend_libusb
 	DEFS += -D USE_BACKEND_LIBUSB
 	BACKEND_OBJ += macrodevice-libusb.o
 	LIBS += -lusb-1.0
+endif
+ifdef use_backend_serial
+	DEFS += -D USE_BACKEND_SERIAL
+	BACKEND_OBJ += macrodevice-serial.o
 endif
 
 
@@ -57,4 +62,6 @@ macrodevice-libevdev.o:
 macrodevice-libusb.o:
 	$(CC) -c backends/macrodevice-libusb.cpp $(CC_OPTIONS)
 
+macrodevice-serial.o:
+	$(CC) -c backends/macrodevice-serial.cpp $(CC_OPTIONS)
 

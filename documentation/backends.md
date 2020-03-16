@@ -57,3 +57,17 @@ pid | usb vendor id | required |
 1. modifiers
 2. key
 
+## serial
+### Dependencies
+None
+### Supported devices
+Any device sending over serial, e.g. Arduino.
+### Notes and Limitations
+This backend reads from the serial interface, until a newline ('\n') is received. The received message up to that point (excluding the newline) is passed to Lua. Care must be taken to handle any potential carriage returns ('\r') at the end of the message. A minimal Arduino example can be found in documentation/arduino-button-serial.ino.
+### Settings
+setting key | description |  required? | default
+---|---|---|---
+port | the path to the serial port, e.g. /dev/ttyUSB0 | required |  false
+### Event description
+1. serial message
+
