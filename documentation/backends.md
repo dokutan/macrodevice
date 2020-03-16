@@ -26,7 +26,7 @@ numbers | don't convert the numeric event values to strings, "true" or "false" |
 ### Supported devices
 USB keyboards
 ### Notes and Limitations
-
+This is the recommended backend for keyboards, as an alternative to libevdev.
 ### Settings
 setting key | description |  required? | default
 ---|---|---|---
@@ -45,9 +45,8 @@ device | usb device address | required when use_bus_device = "true" |
 ### Supported devices
 USB keyboards
 ### Notes and Limitations
-Not recommended, try libusb instead.
-After closing the program, the keyboard needs to be removed ad plugged back in,
-for it to work again. This is because the kernel driver remains detached.
+Not recommended, try libusb instead. Included for compatibility.
+After closing the program, the keyboard needs to be removed and plugged back in for it to work again. This is because the kernel driver remains detached.
 ### Settings
 setting key | description |  required? | default
 ---|---|---|---
