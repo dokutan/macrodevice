@@ -59,7 +59,7 @@ extern "C"
 //**********************************************************************
 void print_help()
 {
-	std::cout << "Options:\n\n";
+	std::cout << "macrodevice-lua options:\n\n";
 	std::cout << "-h --help\tprint this message\n";
 	std::cout << "-c --config\tlua file to be loaded (required)\n";
 	std::cout << "-f --fork\tfork into the background\n";

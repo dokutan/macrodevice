@@ -18,6 +18,27 @@ sudo make install
 
 ## Running
 
+### Basic usage
+
+Get a list of all options
+```
+macrodevice-lua -h
+```
+
+Start the program
+```
+macrodevice-lua -c your-config.lua
+```
+
+Run in the background
+```
+macrodevice-lua -c your-config.lua -f
+```
+
+### Lua config
+
+To handle the incoming events and execute commands a Lua script is needed. For the details look at example.lua .
+
 ### Dealing with permissions
 In most cases root privileges are needed to directly open an input device, however running this program as root creates a major security risk, as all macros are executed with root privileges as well. There are multiple ways to deal with this problem.
 
@@ -27,3 +48,6 @@ sudo macrodevice-lua -c your-config.lua -u your_user_id -g your_group_id
 ```
 2. If the device is represented by a file, as with the libevdev backend, you can change the file permissions, or add your user to a group with access to the files of interest.
 3. In case of the libusb and hidapi backends, you can create a [udev](https://wiki.archlinux.org/index.php/Udev) rule that allows read and write access to the device from your normal user.
+
+## License
+This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
