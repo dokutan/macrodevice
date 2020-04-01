@@ -207,9 +207,12 @@ template< class T > int run_macros( T device, lua_State *L, bool drop_privs, int
 		event.clear();
 		if( device.wait_for_event( event ) != 0 )
 		{
-			std::cerr << "Error: could not get input event\n";
-			device.close_device();
-			return 1;
+			std::cerr << "Warning : could not get input event\n";
+			continue;
+			
+			// When suspending, the current read fails, however the program should not quit
+			/*device.close_device();
+			return 1;*/
 		}
 		
 		
