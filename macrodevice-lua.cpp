@@ -25,6 +25,7 @@
 #include <string>
 #include <map>
 #include <exception>
+#include <cstdio>
 
 #include <getopt.h> // getopt_long
 #include <sys/types.h> // for fork
@@ -338,7 +339,7 @@ int main( int argc, char *argv[] )
 			{
 				target_user = std::stoi( string_user, 0, 10 );
 				target_group = std::stoi( string_group, 0, 10 );
-		}
+			}
 			catch( std::exception &e )
 			{
 				std::cerr << "Invalid argument: -u and -g require a number\n";
@@ -384,9 +385,9 @@ int main( int argc, char *argv[] )
 			pid_t process_id = fork();
 			
 			// close file descriptors
-			close(0); // cin
-			close(1); // cout
-			close(2); // cerr
+			close( fileno(stdin) ); // cin
+			close( fileno(stdout) ); // cout
+			close( fileno(stdout) ); // cerr
 			
 			// quit if not child process
 			if( process_id != 0 )
