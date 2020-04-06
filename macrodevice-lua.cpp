@@ -59,6 +59,10 @@ extern "C"
 #include "backends/macrodevice-serial.h"
 #endif
 
+#ifdef USE_BACKEND_XINDICATOR
+#include "backends/macrodevice-xindicator.h"
+#endif
+
 // help message
 //**********************************************************************
 void print_help()
@@ -427,6 +431,14 @@ int main( int argc, char *argv[] )
 		{
 			#ifdef USE_BACKEND_SERIAL
 			run_macros<macrodevice::device_serial>( macrodevice::device_serial(), L, drop_privileges, target_user, target_group );
+			#else
+			std::cerr << "Error: Backend " << backend << " is not enabled\n";
+			#endif
+		}
+		else if( backend == "xindicator" )
+		{
+			#ifdef USE_BACKEND_XINDICATOR
+			run_macros<macrodevice::device_xindicator>( macrodevice::device_xindicator(), L, drop_privileges, target_user, target_group );
 			#else
 			std::cerr << "Error: Backend " << backend << " is not enabled\n";
 			#endif

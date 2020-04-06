@@ -70,3 +70,14 @@ port | the path to the serial port, e.g. /dev/ttyUSB0 | required |  false
 ### Event description
 1. serial message
 
+## xindicator
+### Dependencies
+Xlib (libx11)
+### Supported devices
+Xorg keyboard indicators (caps lock, num lock, etc.).
+### Notes and Limitations
+
+### Settings
+None
+### Event description
+1. A number corresponding to the active keyboard indicators

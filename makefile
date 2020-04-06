@@ -5,6 +5,7 @@ use_backend_hidapi = true
 use_backend_libevdev = true
 use_backend_libusb = true
 use_backend_serial = true
+use_backend_xindicator = true
 
 # variables
 BIN_DIR = /usr/bin
@@ -31,6 +32,11 @@ endif
 ifdef use_backend_serial
 	DEFS += -D USE_BACKEND_SERIAL
 	BACKEND_OBJ += macrodevice-serial.o
+endif
+ifdef use_backend_xindicator
+	DEFS += -D USE_BACKEND_XINDICATOR
+	BACKEND_OBJ += macrodevice-xindicator.o
+	LIBS += -lX11
 endif
 
 
@@ -64,4 +70,8 @@ macrodevice-libusb.o:
 
 macrodevice-serial.o:
 	$(CC) -c backends/macrodevice-serial.cpp $(CC_OPTIONS)
+
+macrodevice-xindicator.o:
+	$(CC) -c backends/macrodevice-xindicator.cpp $(CC_OPTIONS)
+
 
