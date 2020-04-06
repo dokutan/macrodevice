@@ -7,7 +7,7 @@ This program is designed to execute a command at the press of a button (or other
 ## Installing
 - Install all dependencies (on some distros you might need a dev package for the header files)
   - Lua
-  - Take a look at the available [backends](https://github.com/dokutan/macrodevice/blob/master/documentation/backends.md) and install the dependencies for the backends you want. Or install all of them: libevdev, libusb, hidapi
+  - Take a look at the available [backends](https://github.com/dokutan/macrodevice/blob/master/documentation/backends.md) and install the dependencies for the backends you want. Or install all of them: libevdev, libusb, hidapi, libx11
 - Clone this repository
 - If you don't want all backends, comment out or remove the appropriate lines at the beginning of the makefile
 - Build and install with
