@@ -76,7 +76,7 @@ Xlib (libx11)
 ### Supported devices
 Xorg keyboard indicators (caps lock, num lock, etc.).
 ### Notes and Limitations
-
+TODO!: include individual indicators in the event
 ### Settings
 None
 ### Event description
