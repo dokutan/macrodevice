@@ -26,7 +26,10 @@
 int macrodevice::device_xindicator::load_settings( const std::map< std::string, std::string > &settings )
 {
 	
-	// read settings, this backend has no settings
+	// read settings, this backend has no settings (at the moment)
+	
+	// this prevents an unused parameter compiler warning
+	(void)settings;
 	
 	return 0;
 }
