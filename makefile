@@ -9,6 +9,8 @@ use_backend_xindicator = true
 
 # variables
 BIN_DIR = /usr/bin
+DOC_DIR = /usr/share/doc
+MAN_DIR = /usr/share/man/man1
 CC = g++
 CC_OPTIONS = -Wall -Wextra -O2
 LIBS = -llua 
@@ -48,9 +50,15 @@ clean:
 
 install:
 	cp ./macrodevice-lua $(BIN_DIR)/macrodevice-lua
+	cp ./macrodevice-lua.1 $(MAN_DIR)
+	mkdir $(DOC_DIR)/macrodevice | true
+	cp ./example.lua $(DOC_DIR)/macrodevice
+	cp ./documentation/backends.md $(DOC_DIR)/macrodevice
 
 uninstall:
-	rm $(BIN_DIR)/macrodevice-lua
+	rm -f $(BIN_DIR)/macrodevice-lua
+	rm -rf $(DOC_DIR)/macrodevice
+	rm -f $(MAN_DIR)/macrodevice-lua.1
 
 # individual .cpp files
 macrodevice-lua.o:

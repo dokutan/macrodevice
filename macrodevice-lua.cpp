@@ -73,6 +73,7 @@ void print_help()
 	std::cout << "-f --fork\tfork into the background\n";
 	std::cout << "-u --user\tuser id to drop privileges to (requires -g)\n";
 	std::cout << "-g --group\tgroup id to drop privileges to (requires -u)\n";
+	std::cout << "\nLicensed under the GNU GPL v3 or later\n";
 }
 
 
