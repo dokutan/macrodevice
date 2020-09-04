@@ -2,11 +2,11 @@
 
 This is a list of all backends and their features.
 
--[libevdev](#libevdev)
--[libusb](#libusb)
--[hidapi](#hidapi)
--[serial](#serial)
--[xindicator](#xindicator)
+- [libevdev](#libevdev)
+- [libusb](#libusb)
+- [hidapi](#hidapi)
+- [serial](#serial)
+- [xindicator](#xindicator)
 
 ## libevdev
 ### Dependencies
