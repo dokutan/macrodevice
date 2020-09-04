@@ -2,6 +2,12 @@
 
 This is a list of all backends and their features.
 
+-[libevdev](#libevdev)
+-[libusb](#libusb)
+-[hidapi](#hidapi)
+-[serial](#serial)
+-[xindicator](#xindicator)
+
 ## libevdev
 ### Dependencies
 [libevdev](https://www.freedesktop.org/software/libevdev/doc/latest/)

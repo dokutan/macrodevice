@@ -2,7 +2,7 @@
 Turn any input device into a dedicated macrodevice. This is a rewrite of [macroKeyboard](https://github.com/dokutan/macroKeyboard).
 
 ## What is the purpose of this program?
-This program is designed to execute a command at the press of a button (or other input) from a dedicated device (e.g keyboard, gamepad, etc.). The configuration is done in Lua, so a complex configuration is possible.
+This program is designed to execute a command at the press of a button (or other input) from a dedicated device (e.g keyboard, gamepad, Arduino (over serial), keyboard indicators, etc.). The configuration is done in Lua, so a complex configuration is possible.
 
 ## Installing
 - Install all dependencies (on some distros you might need a dev package for the header files)
