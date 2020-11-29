@@ -25,11 +25,14 @@
 #include <string>
 #include <map>
 #include <exception>
+#include <thread>
+#include <mutex>
 #include <cstdio>
 
 #include <getopt.h> // getopt_long
 #include <sys/types.h> // for fork
 #include <unistd.h> // for fork
+#include <pwd.h> // for getpwnam
 
 // lua libraries
 extern "C"
@@ -39,6 +42,11 @@ extern "C"
 #include <lualib.h>
 }
 
+
+// version defined in makefile
+#ifndef VERSION_STRING
+#define VERSION_STRING "undefined"
+#endif
 
 
 // backends
@@ -62,6 +70,13 @@ extern "C"
 #ifdef USE_BACKEND_XINDICATOR
 #include "backends/macrodevice-xindicator.h"
 #endif
+
+
+// global variables
+//**********************************************************************
+std::vector<std::thread> device_threads; // threads for event handling
+int thread_number = 0; // used to identify threads TODO! remove?
+std::mutex mutex_lua, mutex_open_device;
 
 // help message
 //**********************************************************************
@@ -101,7 +116,7 @@ void stack_dump( lua_State *l )
 
 // drop root privileges to a specified user and group id
 //**********************************************************************
-int drop_root( int uid, int gid )
+int drop_root( uid_t uid, gid_t gid )
 {
 	// important: set gid before uid
 	if( getuid() == 0 ) // check if root
@@ -125,25 +140,141 @@ int drop_root( int uid, int gid )
 }
 
 
-// template function to handle all the device management and macro execution 
+// template function to handle the device management and macro execution
 //**********************************************************************
-template< class T > int run_macros( T device, lua_State *L, bool drop_privs, int uid, int gid )
+template< class T > int run_macros( T device, lua_State *L, std::map<std::string, std::string> settings, std::string callback_registry_key )
 {
-	
-	// get and convert settings table from lua 
+	// pass settings to the device object
 	//******************************************************************
-	lua_getglobal( L, "settings" ); // put table on top of the stack
-	if( !lua_istable( L, -1 ) )
-	{
-		std::cerr << "Error in Lua: variable settings must be a table\n";
-		lua_remove( L, -1 ); // remove top value from stack
+	if( device.load_settings( settings ) != 0 ){
+		std::cerr << "Error: Invalid settings specified\n";
 		return 1;
 	}
 	
-	// traverse the table
-	std::map< std::string, std::string > settings;
-	lua_pushnil( L ); // first key
+	// open the device
+	//******************************************************************
+	if( device.open_device() != 0 ){
+		std::cerr << "Error: Could not open the device\n";
+		return 1;
+	}
 	
+	// wait for input
+	//******************************************************************
+	std::vector< std::string > event;
+	std::string lua_return;
+	while( 1 )
+	{
+		event.clear();
+		if( device.wait_for_event( event ) != 0 )
+		{
+			std::cerr << "Warning : could not get input event\n";
+			continue;
+		}
+		
+		// process input event
+		//******************************************************************
+		
+		// lock lua mutex
+		const std::lock_guard<std::mutex> lock( mutex_lua );
+		
+		// load callback function onto the stack
+		lua_pushstring( L, callback_registry_key.c_str() ); // push key onto the stack
+		lua_gettable( L, LUA_REGISTRYINDEX ); // push registry["callback_registry_key"] onto the stack
+		
+		lua_newtable( L ); // create new table at the top of the stack
+		for( unsigned int i = 0; i < event.size(); i++ ){
+			lua_pushnumber( L, i+1 ); // push table index
+			lua_pushstring( L, event.at(i).c_str() ); // push table value
+			lua_settable( L, -3 );
+		}
+		
+		// call lua callback function
+		if( lua_pcall( L, 1, 1, 0 ) != 0 ){
+			std::cerr << "An error occured: " << lua_tostring( L, -1 ) << "\n";
+			lua_remove( L, -1 );  // remove top value from stack
+			device.close_device();
+			return 1;
+		}
+		
+		// get return value from lua callback function
+		if( lua_isstring( L, -1 ) )
+		{
+			lua_return = lua_tostring( L, -1 );
+			
+			//quit if requested by lua
+			if( lua_return == "quit" )
+			{
+				break;
+			}
+			
+		}
+		
+		// remove function return value from stack
+		lua_remove( L, -1 );
+		
+	}
+	
+	// close the device
+	//******************************************************************
+	device.close_device();
+	
+	return 0;
+}
+
+// lua function to drop root permissions
+//**********************************************************************
+static int lua_drop_root( lua_State *L )
+{
+	
+	if( lua_gettop( L ) == 2 ) // if two arguments passed: drop_root( uid, gid )
+	{
+		uid_t uid = luaL_checkinteger( L, 1 );
+		gid_t gid = luaL_checkinteger( L, 2 );
+		lua_pushinteger( L, drop_root( uid, gid ) );
+	}
+	else // drop_root( "username" )
+	{
+		std::string username = luaL_checkstring( L, 1 );
+		struct passwd *pw = getpwnam( username.c_str() );
+
+		if( pw == NULL )
+			lua_pushinteger( L, 1 );
+		else
+			lua_pushinteger( L, drop_root( pw->pw_uid, pw->pw_gid ) );
+	}
+	
+	return 1;
+}
+
+// lua function to open a device
+//**********************************************************************
+static int lua_open_device( lua_State *L )
+{
+	// lock mutex, mutex_lua should be locked every time this function gets called
+	const std::lock_guard<std::mutex> lock( mutex_open_device );
+	
+	std::string backend, registry_key;
+	std::map< std::string, std::string > settings;
+	
+	// check arguments: open( "backend", {settings}, event_handler() )
+	//******************************************************************
+	backend = luaL_checkstring( L, 1 );
+	luaL_checktype( L, 2, LUA_TTABLE );
+	luaL_checktype( L, 3, LUA_TFUNCTION );
+	
+	// store callback function in Lua registry
+	//******************************************************************
+	registry_key = "macrodevice_callback_" + std::to_string( thread_number );
+	thread_number++;
+	
+	lua_pushstring( L, registry_key.c_str() ); // push key onto the stack
+	lua_pushvalue( L, 3 ); // push copy of the callback function onto the stack
+	lua_settable( L, LUA_REGISTRYINDEX ); // set registry[key] = callback function
+	lua_pop( L, 1 ); // pop callback function from the stack
+	
+	// parse settings table
+	//******************************************************************
+	lua_pushnil( L ); // first key
 	while( lua_next( L, -2 ) != 0 ) // key at -2, value at -1
 	{
 		// check if key is string
@@ -175,90 +306,55 @@ template< class T > int run_macros( T device, lua_State *L, bool drop_privs, int
 		
 		lua_remove( L, -1 ); // remove value from stack
 	}
+	lua_remove( L, -1 ); // remove top value from stack (settings table)
 	
-	lua_remove( L, -1 ); // remove top value from stack ( settings table )
-	
-	
-	
-	// pass settings to the device object
-	if( device.load_settings( settings ) != 0 ){
-		std::cerr << "Error: Invalid settings specified\n";
-		return 1;
-	}
-	
-	
-	
-	// open the device
-	if( device.open_device() != 0 ){
-		std::cerr << "Error: Could not open the device\n";
-		return 1;
-	}
-	
-	// if root: drop root privileges if requested
-	if( drop_privs )
+	// determine backend and create thread
+	//******************************************************************
+	lua_pop( L, 1 ); // pop backend from stack
+	if( backend == "hidapi" )
 	{
-		if( drop_root( uid, gid ) != 0 )
-		{
-			std::cerr << "Error: could not drop privileges\n";
-			device.close_device();
-			return 1;
-		}
+		#ifdef USE_BACKEND_HIDAPI
+		device_threads.push_back( std::thread( run_macros<macrodevice::device_hidapi>, macrodevice::device_hidapi(), L, settings, registry_key ) );
+		#else
+		std::cerr << "Error: Backend " << backend << " is not enabled\n";
+		#endif
 	}
-	
-	// wait for input
-	std::vector< std::string > event;
-	std::string lua_return;
-	while( 1 )
+	else if( backend == "libevdev" )
 	{
-		event.clear();
-		if( device.wait_for_event( event ) != 0 )
-		{
-			std::cerr << "Warning : could not get input event\n";
-			continue;
-			
-			// When suspending, the current read fails, however the program should not quit
-			/*device.close_device();
-			return 1;*/
-		}
-		
-		
-		lua_getglobal( L, "input_handler" ); // load function onto stack
-		
-		lua_newtable( L ); // create new table at the top of the stack
-		for( unsigned int i = 0; i < event.size(); i++ ){
-			lua_pushnumber( L, i+1 ); // push table index
-			lua_pushstring( L, event.at(i).c_str() ); // push table value
-			lua_settable( L, -3 );
-		}
-		
-		// call lua function input_handler
-		if( lua_pcall( L, 1, 1, 0 ) != 0 ){
-			std::cerr << "An error occured: " << lua_tostring( L, -1 ) << "\n";
-			lua_remove( L, -1 );  // remove top value from stack
-			device.close_device();
-			return 1;
-		}
-		
-		// get return value from lua function inut_hander
-		if( lua_isstring( L, -1 ) )
-		{
-			lua_return = lua_tostring( L, -1 );
-			
-			//quit if requested by lua
-			if( lua_return == "quit" )
-			{
-				break;
-			}
-			
-		}
-		
-		// remove function return value from stack
-		lua_remove( L, -1 );
-		
+		#ifdef USE_BACKEND_LIBEVDEV
+		device_threads.push_back( std::thread( run_macros<macrodevice::device_libevdev>, macrodevice::device_libevdev(), L, settings, registry_key ) );
+		#else
+		std::cerr << "Error: Backend " << backend << " is not enabled\n";
+		#endif
 	}
-	
-	// close the device
-	device.close_device();
+	else if( backend == "libusb" )
+	{
+		#ifdef USE_BACKEND_LIBUSB
+		device_threads.push_back( std::thread( run_macros<macrodevice::device_libusb>, macrodevice::device_libusb(), L, settings, registry_key ) );
+		#else
+		std::cerr << "Error: Backend " << backend << " is not enabled\n";
+		#endif
+	}
+	else if( backend == "serial" )
+	{
+		#ifdef USE_BACKEND_SERIAL
+		device_threads.push_back( std::thread( run_macros<macrodevice::device_serial>, macrodevice::device_serial(), L, settings, registry_key ) );
+		#else
+		std::cerr << "Error: Backend " << backend << " is not enabled\n";
+		#endif
+	}
+	else if( backend == "xindicator" )
+	{
+		#ifdef USE_BACKEND_XINDICATOR
+		device_threads.push_back( std::thread( run_macros<macrodevice::device_xindicator>, macrodevice::device_xindicator(), L, settings, registry_key ) );
+		#else
+		std::cerr << "Error: Backend " << backend << " is not enabled\n";
+		#endif
+	}
+	else
+	{
+		std::cerr << "Error: Invalid backend\n";
+	}
 	
 	return 0;
 }
@@ -272,9 +368,7 @@ int main( int argc, char *argv[] )
 	{
 		
 		// commandline arguments
-		//******************************************************************
-		
-		//command line options
+		//**************************************************************
 		static struct option long_options[] = 
 		{
 			{"help", no_argument, 0, 'h'},
@@ -287,13 +381,10 @@ int main( int argc, char *argv[] )
 		
 		// parse commandline options
 		int c, option_index = 0;
-		bool flag_fork = false, flag_config = false, flag_user = false, flag_group = false;
+		bool flag_fork = false, flag_config = false;
 		std::string string_config, string_user, string_group;
-		
-		int target_user = 0, target_group = 0; // uid and gid for privilege dropping
-		bool drop_privileges = false;
-		
-		while( (c = getopt_long( argc, argv, "hc:fu:g:", long_options, &option_index ) ) != -1 )
+			
+		while( (c = getopt_long( argc, argv, "hc:f", long_options, &option_index ) ) != -1 )
 		{
 			switch( c )
 			{
@@ -308,14 +399,6 @@ int main( int argc, char *argv[] )
 				case 'f':
 					flag_fork = true;
 					break;
-				case 'u':
-					flag_user = true;
-					string_user = optarg;
-					break;
-				case 'g':
-					flag_group = true;
-					string_group = optarg;
-					break;
 				case '?':
 					return 1;
 					break;
@@ -327,132 +410,72 @@ int main( int argc, char *argv[] )
 		// is a lua file specified ?
 		if( !flag_config )
 		{
-			std::cerr << "Missing arguments: run " << argv[0] << " -h for help\n";
+			std::cerr << "Missing argument -c, run " << argv[0] << " -h for help\n";
 			return 1;
-		}
-		
-		// are user and group id specified ? → enable privilege dropping
-		if( !flag_user != !flag_group )
-		{
-			std::cerr << "Missing arguments: -u and -g need to be used together\n";
-			return 1;
-		}
-		else if( flag_user && flag_group )
-		{
-			drop_privileges = true;
-			try
-			{
-				target_user = std::stoi( string_user, 0, 10 );
-				target_group = std::stoi( string_group, 0, 10 );
-			}
-			catch( std::exception &e )
-			{
-				std::cerr << "Invalid argument: -u and -g require a number\n";
-				return 1;
-			}
 		}
 		
 		// lua initialisation
-		//******************************************************************
-		
+		//**************************************************************
 		lua_State *L = luaL_newstate(); // open lua
 		luaL_openlibs( L ); // open lua libraries
 		
-		// load and run lua file
-		if( luaL_loadfile( L, string_config.c_str() ) || lua_pcall( L, 0, 0, 0 ) )
+		
+		// make macrodevice functions available to Lua
+		lua_newtable( L ); // create new table
+		
+		lua_pushstring( L, "open" ); // index
+		lua_pushcfunction( L, lua_open_device ); // value
+		lua_settable( L, -3 ); // table[index] = value, pops index and value
+		
+		lua_pushstring( L, "drop_root" ); // index
+		lua_pushcfunction( L, lua_drop_root ); // value
+		lua_settable( L, -3 ); // table[index] = value, pops index and value
+		
+		lua_pushstring( L, "version" ); // index
+		lua_pushstring( L, VERSION_STRING ); // value
+		lua_settable( L, -3 ); // table[index] = value, pops index and value
+		
+		lua_setglobal( L, "macrodevice" ); // name table, pops table from stack
+		
 		{
-			std::cerr << "Error in Lua: " << lua_tostring( L, -1 ) << "\n";
-			lua_remove( L, -1 ); // remove top value from stack
-			lua_close( L );
-			return 1;
-		}
-		
-		// get backend variable from lua
-		lua_getglobal( L, "backend" );
-		if( !lua_isstring( L, -1 ) )
-		{
-			std::cerr << "Error in lua: backend must be a string\n";
-			lua_remove( L, -1 ); // remove top value from stack
-			lua_close( L ); 
-			return 1;
-		}
-		std::string backend = lua_tostring( L, -1 );
-		lua_remove( L, -1 ); // remove top value from stack
-		
-		
-		
-		// fork ?
-		//******************************************************************
-		
-		if( flag_fork )
-		{
-			// create child process
-			pid_t process_id = fork();
+			// lock lua mutex
+			const std::lock_guard<std::mutex> lock( mutex_lua );
 			
-			// close file descriptors
-			close( fileno(stdin) ); // cin
-			close( fileno(stdout) ); // cout
-			close( fileno(stdout) ); // cerr
+			// load and run lua file
+			if( luaL_loadfile( L, string_config.c_str() ) || lua_pcall( L, 0, 0, 0 ) )
+			{
+				std::cerr << "Error in Lua: " << lua_tostring( L, -1 ) << "\n";
+				lua_remove( L, -1 ); // remove top value from stack
+				lua_close( L );
+				return 1;
+			}
 			
-			// quit if not child process
-			if( process_id != 0 )
-				return 0;
+			// fork ?
+			//**************************************************************
+			if( flag_fork )
+			{
+				// create child process
+				pid_t process_id = fork();
+				
+				// close file descriptors
+				close( fileno(stdin) ); // cin
+				close( fileno(stdout) ); // cout
+				close( fileno(stdout) ); // cerr
+				
+				// quit if not child process
+				if( process_id != 0 )
+					return 0;
+			}
+			
 		}
 		
-		
-		
-		// determine backend and call run_macros
-		//******************************************************************
-		
-		if( backend == "hidapi" )
-		{
-			#ifdef USE_BACKEND_HIDAPI
-			run_macros<macrodevice::device_hidapi>( macrodevice::device_hidapi(), L, drop_privileges, target_user, target_group );
-			#else
-			std::cerr << "Error: Backend " << backend << " is not enabled\n";
-			#endif
-		}
-		else if( backend == "libevdev" )
-		{
-			#ifdef USE_BACKEND_LIBEVDEV
-			run_macros<macrodevice::device_libevdev>( macrodevice::device_libevdev(), L, drop_privileges, target_user, target_group );
-			#else
-			std::cerr << "Error: Backend " << backend << " is not enabled\n";
-			#endif
-		}
-		else if( backend == "libusb" )
-		{
-			#ifdef USE_BACKEND_LIBUSB
-			run_macros<macrodevice::device_libusb>( macrodevice::device_libusb(), L, drop_privileges, target_user, target_group );
-			#else
-			std::cerr << "Error: Backend " << backend << " is not enabled\n";
-			#endif
-		}
-		else if( backend == "serial" )
-		{
-			#ifdef USE_BACKEND_SERIAL
-			run_macros<macrodevice::device_serial>( macrodevice::device_serial(), L, drop_privileges, target_user, target_group );
-			#else
-			std::cerr << "Error: Backend " << backend << " is not enabled\n";
-			#endif
-		}
-		else if( backend == "xindicator" )
-		{
-			#ifdef USE_BACKEND_XINDICATOR
-			run_macros<macrodevice::device_xindicator>( macrodevice::device_xindicator(), L, drop_privileges, target_user, target_group );
-			#else
-			std::cerr << "Error: Backend " << backend << " is not enabled\n";
-			#endif
-		}
-		else
-		{
-			std::cerr << "Error: Invalid backend\n";
-		}
-		
+		// wait for all threads to join
+		//**************************************************************
+		for( auto &t : device_threads )
+			t.join();
 		
 		// cleanup
 		//**************************************************************
-		
 		lua_close( L );
 		
 	}

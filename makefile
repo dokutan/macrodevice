@@ -1,5 +1,9 @@
 # makefile for macrodevice
 
+# version
+VERSION_STRING = "\"2.0\""
+DEFS += -D VERSION_STRING=$(VERSION_STRING)
+
 # backend selection, comment out following lines to disable backends
 use_backend_hidapi = true
 use_backend_libevdev = true
@@ -12,8 +16,8 @@ BIN_DIR = /usr/bin
 DOC_DIR = /usr/share/doc
 MAN_DIR = /usr/share/man/man1
 CC = g++
-CC_OPTIONS = -Wall -Wextra -O2
-LIBS = -llua 
+CC_OPTIONS = -Wall -Wextra -O2 
+LIBS = -llua -pthread
 
 # change compiler options according to backend selection
 ifdef use_backend_hidapi
@@ -43,7 +47,7 @@ endif
 
 
 build: macrodevice-lua.o helpers.o $(BACKEND_OBJ)
-	g++ *.o -o macrodevice-lua $(LIBS)
+	$(CC) *.o -o macrodevice-lua $(LIBS)
 
 clean:
 	rm macrodevice-lua *.o
