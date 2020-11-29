@@ -412,6 +412,23 @@ int main( int argc, char *argv[] )
 			return 1;
 		}
 		
+		// fork ?
+		//**************************************************************
+		if( flag_fork )
+		{
+			// create child process
+			pid_t process_id = fork();
+			
+			// close file descriptors
+			close( fileno(stdin) ); // cin
+			close( fileno(stdout) ); // cout
+			close( fileno(stdout) ); // cerr
+			
+			// quit if not child process
+			if( process_id != 0 )
+				return 0;
+		}
+		
 		// lua initialisation
 		//**************************************************************
 		lua_State *L = luaL_newstate(); // open lua
@@ -446,25 +463,7 @@ int main( int argc, char *argv[] )
 				lua_remove( L, -1 ); // remove top value from stack
 				lua_close( L );
 				return 1;
-			}
-			
-			// fork ?
-			//**************************************************************
-			if( flag_fork )
-			{
-				// create child process
-				pid_t process_id = fork();
-				
-				// close file descriptors
-				close( fileno(stdin) ); // cin
-				close( fileno(stdout) ); // cout
-				close( fileno(stdout) ); // cerr
-				
-				// quit if not child process
-				if( process_id != 0 )
-					return 0;
-			}
-			
+			}	
 		}
 		
 		// wait for all threads to join

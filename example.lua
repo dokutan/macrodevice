@@ -37,7 +37,7 @@ function input_handler( event )
 		os.execute( "mpc next" ) -- F3
 	end
 	
-	-- when this function returns "quit", the program exits
+	-- when this function returns "quit", the device gets closed
 	if event[1] == "2" and event[2] == "41" then
 		return "quit" -- shift+esc : quit
 	end
