@@ -374,8 +374,6 @@ int main( int argc, char *argv[] )
 			{"help", no_argument, 0, 'h'},
 			{"config", required_argument, 0, 'c'},
 			{"fork", no_argument, 0, 'f'},
-			{"user", no_argument, 0, 'u'},
-			{"group", no_argument, 0, 'g'},
 			{0, 0, 0, 0}
 		};
 		

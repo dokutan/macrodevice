@@ -170,6 +170,9 @@ int macrodevice::device_libusb::open_device()
  */
 int macrodevice::device_libusb::close_device()
 {
+	if( m_device == NULL )
+		return 1;
+	
 	// release interface 0
 	libusb_release_interface( m_device, 0 );
 	
