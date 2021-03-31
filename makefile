@@ -54,10 +54,10 @@ clean:
 
 install:
 	cp ./macrodevice-lua $(BIN_DIR)/macrodevice-lua
-	cp ./macrodevice-lua.1 $(MAN_DIR)
+	cp ./doc/macrodevice-lua.1 $(MAN_DIR)
 	mkdir $(DOC_DIR)/macrodevice | true
-	cp ./example.lua $(DOC_DIR)/macrodevice
-	cp ./documentation/backends.md $(DOC_DIR)/macrodevice
+	cp ./examples/example.lua $(DOC_DIR)/macrodevice
+	cp ./doc/backends.md $(DOC_DIR)/macrodevice
 
 uninstall:
 	rm -f $(BIN_DIR)/macrodevice-lua
@@ -66,24 +66,24 @@ uninstall:
 
 # individual .cpp files
 macrodevice-lua.o:
-	$(CC) -c macrodevice-lua.cpp $(CC_OPTIONS) $(DEFS)
+	$(CC) -c src/macrodevice-lua.cpp $(CC_OPTIONS) $(DEFS)
 
 helpers.o:
-	$(CC) -c backends/helpers.cpp $(CC_OPTIONS)
+	$(CC) -c src/backends/helpers.cpp $(CC_OPTIONS)
 
 macrodevice-hidapi.o:
-	$(CC) -c backends/macrodevice-hidapi.cpp $(CC_OPTIONS)
+	$(CC) -c src/backends/macrodevice-hidapi.cpp $(CC_OPTIONS)
 
 macrodevice-libevdev.o:
-	$(CC) -c backends/macrodevice-libevdev.cpp $(CC_OPTIONS)
+	$(CC) -c src/backends/macrodevice-libevdev.cpp $(CC_OPTIONS)
 
 macrodevice-libusb.o:
-	$(CC) -c backends/macrodevice-libusb.cpp $(CC_OPTIONS)
+	$(CC) -c src/backends/macrodevice-libusb.cpp $(CC_OPTIONS)
 
 macrodevice-serial.o:
-	$(CC) -c backends/macrodevice-serial.cpp $(CC_OPTIONS)
+	$(CC) -c src/backends/macrodevice-serial.cpp $(CC_OPTIONS)
 
 macrodevice-xindicator.o:
-	$(CC) -c backends/macrodevice-xindicator.cpp $(CC_OPTIONS)
+	$(CC) -c src/backends/macrodevice-xindicator.cpp $(CC_OPTIONS)
 
 
