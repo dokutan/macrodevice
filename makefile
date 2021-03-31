@@ -58,6 +58,7 @@ install:
 	mkdir $(DOC_DIR)/macrodevice | true
 	cp ./examples/example.lua $(DOC_DIR)/macrodevice
 	cp ./doc/backends.md $(DOC_DIR)/macrodevice
+	cp ./doc/api.md $(DOC_DIR)/macrodevice
 
 uninstall:
 	rm -f $(BIN_DIR)/macrodevice-lua

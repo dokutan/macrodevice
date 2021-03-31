@@ -37,7 +37,7 @@ macrodevice-lua -c your-config.lua -f
 
 ### Lua config
 
-To handle the incoming events and execute commands a Lua script is needed. For the details look at ``examples/example.lua``.
+To handle the incoming events and execute commands a Lua script is needed. For the details look at ``examples/example.lua`` and ``doc/api.md``.
 
 To easily create the input handler function for your lua script, edit ``examples/create-config.lua`` and execute
 ```

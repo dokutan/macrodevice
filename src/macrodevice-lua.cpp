@@ -42,7 +42,6 @@ extern "C"
 #include <lualib.h>
 }
 
-
 // version defined in makefile
 #ifndef VERSION_STRING
 #define VERSION_STRING "undefined"
@@ -71,51 +70,35 @@ extern "C"
 #include "backends/macrodevice-xindicator.h"
 #endif
 
+// help message
+//**********************************************************************
+const std::string help_message = R"(macrodevice-lua options:
+
+-h --help    print this message
+-c --config  lua file to be loaded (required)
+-f --fork    fork into the background
+-u --user    user id to drop privileges to (requires -g)
+-g --group   group id to drop privileges to (requires -u)
+
+Licensed under the GNU GPL v3 or later
+)";
+
 
 // global variables
 //**********************************************************************
-std::vector<std::thread> device_threads; // threads for event handling
-int thread_number = 0; // used to identify threads TODO! remove?
-std::mutex mutex_lua, mutex_open_device;
+/// Threads for event handling, one thread per device
+std::vector<std::thread> device_threads;
 
-// help message
-//**********************************************************************
-void print_help()
-{
-	std::cout << "macrodevice-lua options:\n\n";
-	std::cout << "-h --help\tprint this message\n";
-	std::cout << "-c --config\tlua file to be loaded (required)\n";
-	std::cout << "-f --fork\tfork into the background\n";
-	std::cout << "-u --user\tuser id to drop privileges to (requires -g)\n";
-	std::cout << "-g --group\tgroup id to drop privileges to (requires -u)\n";
-	std::cout << "\nLicensed under the GNU GPL v3 or later\n";
-}
+/// Used as an identifier for each thread
+int thread_number = 0;
 
+/// Mutex for interactions with the Lua state
+std::mutex mutex_lua;
 
-// lua stack dump for debugging purposes
-//**********************************************************************
-void stack_dump( lua_State *l )
-{
-	std::cout << "------\n";
-	for( int i = lua_gettop( l ); i > 0; i-- ){
-		
-		std::cout << i << "\t" << lua_typename( l, lua_type( l, i ) );
-		
-		if( lua_isnumber( l, i ) ){
-			std::cout << "\t" << lua_tonumber( l, i ) << "\n";
-		} else if( lua_isstring( l, i ) ){
-			std::cout << "\t" << lua_tostring( l, i ) << "\n";
-		} else{
-			std::cout << "\n";
-		}
-		
-	}
-	std::cout << "------\n";
-}
+/// This mutex gets lock when opening a new device
+std::mutex mutex_open_device;
 
-
-// drop root privileges to a specified user and group id
-//**********************************************************************
+/// Drop root permissions to the given user and group id
 int drop_root( uid_t uid, gid_t gid )
 {
 	// important: set gid before uid
@@ -139,9 +122,9 @@ int drop_root( uid_t uid, gid_t gid )
 	return 0;
 }
 
-
-// template function to handle the device management and macro execution
+// functions
 //**********************************************************************
+/// Thread function to open a specified device and pass the incoming events to the callback function
 template< class T > int run_macros( T device, lua_State *L, std::map<std::string, std::string> settings, std::string callback_registry_key )
 {
 	// pass settings to the device object
@@ -221,9 +204,8 @@ template< class T > int run_macros( T device, lua_State *L, std::map<std::string
 	return 0;
 }
 
-// lua function to drop root permissions
-//**********************************************************************
-static int lua_drop_root( lua_State *L )
+/// Lua wrapper for drop_root()
+int lua_drop_root( lua_State *L )
 {
 	
 	if( lua_gettop( L ) == 2 ) // if two arguments passed: drop_root( uid, gid )
@@ -246,9 +228,8 @@ static int lua_drop_root( lua_State *L )
 	return 1;
 }
 
-// lua function to open a device
-//**********************************************************************
-static int lua_open_device( lua_State *L )
+/// Lua function to open a new device, creates a new thread running run_macros()
+int lua_open_device( lua_State *L )
 {
 	// lock mutex, mutex_lua should be locked every time this function gets called
 	const std::lock_guard<std::mutex> lock( mutex_open_device );
@@ -359,6 +340,25 @@ static int lua_open_device( lua_State *L )
 	return 0;
 }
 
+/// Makes the macrodevice table available to the Lua state
+inline void lua_register_macrodevice( lua_State *L )
+{
+    lua_newtable( L ); // create new table
+
+    lua_pushstring( L, "open" ); // index
+    lua_pushcfunction( L, lua_open_device ); // value
+    lua_settable( L, -3 ); // table[index] = value, pops index and value
+
+    lua_pushstring( L, "drop_root" ); // index
+    lua_pushcfunction( L, lua_drop_root ); // value
+    lua_settable( L, -3 ); // table[index] = value, pops index and value
+
+    lua_pushstring( L, "version" ); // index
+    lua_pushstring( L, VERSION_STRING ); // value
+    lua_settable( L, -3 ); // table[index] = value, pops index and value
+
+    lua_setglobal( L, "macrodevice" ); // name table, pops table from stack
+}
 
 // main function
 //**********************************************************************
@@ -387,7 +387,7 @@ int main( int argc, char *argv[] )
 			switch( c )
 			{
 				case 'h':
-					print_help();
+					std::cout << help_message;
 					return 0;
 					break;
 				case 'c':
@@ -436,21 +436,7 @@ int main( int argc, char *argv[] )
 		
 		
 		// make macrodevice functions available to Lua
-		lua_newtable( L ); // create new table
-		
-		lua_pushstring( L, "open" ); // index
-		lua_pushcfunction( L, lua_open_device ); // value
-		lua_settable( L, -3 ); // table[index] = value, pops index and value
-		
-		lua_pushstring( L, "drop_root" ); // index
-		lua_pushcfunction( L, lua_drop_root ); // value
-		lua_settable( L, -3 ); // table[index] = value, pops index and value
-		
-		lua_pushstring( L, "version" ); // index
-		lua_pushstring( L, VERSION_STRING ); // value
-		lua_settable( L, -3 ); // table[index] = value, pops index and value
-		
-		lua_setglobal( L, "macrodevice" ); // name table, pops table from stack
+		lua_register_macrodevice( L );
 		
 		{
 			// lock lua mutex
