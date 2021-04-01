@@ -77,8 +77,7 @@ const std::string help_message = R"(macrodevice-lua options:
 -h --help    print this message
 -c --config  lua file to be loaded (required)
 -f --fork    fork into the background
--u --user    user id to drop privileges to (requires -g)
--g --group   group id to drop privileges to (requires -u)
+-a --arg     pass the next argument to Lua
 
 Licensed under the GNU GPL v3 or later
 )";
@@ -359,7 +358,7 @@ int lua_open_device( lua_State *L )
 }
 
 /// Makes the macrodevice table available to the Lua state
-inline void lua_register_macrodevice( lua_State *L )
+inline void lua_register_macrodevice( lua_State *L, std::vector< std::string > &arg )
 {
     lua_newtable( L ); // create new table
 
@@ -374,6 +373,17 @@ inline void lua_register_macrodevice( lua_State *L )
     lua_pushstring( L, "version" ); // index
     lua_pushstring( L, VERSION_STRING ); // value
     lua_settable( L, -3 ); // table[index] = value, pops index and value
+
+	lua_pushstring( L, "arg" ); // index
+	lua_newtable( L ); // create new table
+	for( size_t i = 0; i < arg.size(); i++ )
+	{
+		lua_pushinteger( L, i+1 ); // index
+		lua_pushstring( L, arg.at(i).c_str() ); // value
+		lua_settable( L, -3 ); // table[index] = value, pops index and value
+	}
+	lua_settable( L, -3 ); // name table arg, pops table from stack
+
 
     lua_setglobal( L, "macrodevice" ); // name table, pops table from stack
 }
@@ -392,6 +402,7 @@ int main( int argc, char *argv[] )
 			{"help", no_argument, 0, 'h'},
 			{"config", required_argument, 0, 'c'},
 			{"fork", no_argument, 0, 'f'},
+			{"arg", required_argument, 0, 'a'},
 			{0, 0, 0, 0}
 		};
 		
@@ -399,8 +410,9 @@ int main( int argc, char *argv[] )
 		int c, option_index = 0;
 		bool flag_fork = false, flag_config = false;
 		std::string string_config, string_user, string_group;
+		std::vector< std::string > lua_args;
 			
-		while( (c = getopt_long( argc, argv, "hc:f", long_options, &option_index ) ) != -1 )
+		while( (c = getopt_long( argc, argv, "hc:fa:", long_options, &option_index ) ) != -1 )
 		{
 			switch( c )
 			{
@@ -414,6 +426,9 @@ int main( int argc, char *argv[] )
 					break;
 				case 'f':
 					flag_fork = true;
+					break;
+				case 'a':
+					lua_args.push_back( optarg );
 					break;
 				case '?':
 					return 1;
@@ -454,7 +469,7 @@ int main( int argc, char *argv[] )
 		
 		
 		// make macrodevice functions available to Lua
-		lua_register_macrodevice( L );
+		lua_register_macrodevice( L, lua_args );
 		
 		{
 			// lock lua mutex

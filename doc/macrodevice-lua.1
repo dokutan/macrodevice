@@ -3,10 +3,7 @@
 macrodevice-lua \- turn any input device into a dedicated macrodevice
 .SH SYNOPSIS
 .B macrodevice-lua
-[\fB\-f\fR] \fB\-c\fR \fIFILE\fR
-.br
-.B macrodevice-lua
-[\fB\-f\fR] \fB\-u\fR \fINUMBER\fR \fB\-g\fR \fINUMBER\fR \fB\-c\fR \fIFILE\fR
+[\fB\-f\fR] [\fB\-a\fR \fIARGUMENT\fR] \fB\-c\fR \fIFILE\fR
 .br
 .B macrodevice-lua
 \fB\-h\fR
@@ -22,6 +19,9 @@ The lua script that should be loaded.
 .TP
 \fB\-f\fR, \fB\-\-fork\fR
 Fork into the background.
+.TP
+\fB\-a\fR, \fB\-\-arg=\fIARGUMENT\fR
+Add \fIARGUMENT\fR to the macrodevice.arg table. Can be used multiple times.
 .SH EXAMPLES
 Start and run in the background
 .PP

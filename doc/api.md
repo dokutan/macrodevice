@@ -1,5 +1,8 @@
 # macrodevice Lua API
 
+## ``macrodevice.arg``
+A table containing the arguments that are being passed to Lua using the ``--arg`` or ``-a`` commandline option.
+
 ## ``macrodevice.drop_root(uid, gid)``
 uid: integer, gid: integer
 
