@@ -236,20 +236,35 @@ int lua_open_device( lua_State *L )
 	
 	std::string backend, registry_key;
 	std::map< std::string, std::string > settings;
+	bool backend_from_settings = false;
 	
-	// check arguments: open( "backend", {settings}, event_handler() )
+	// check arguments
 	//******************************************************************
-	backend = luaL_checkstring( L, 1 );
-	luaL_checktype( L, 2, LUA_TTABLE );
-	luaL_checktype( L, 3, LUA_TFUNCTION );
-	
+	if( lua_gettop( L ) == 3 ) // open( "backend", {settings}, event_handler() )
+	{
+		backend = luaL_checkstring( L, 1 );
+		luaL_checktype( L, 2, LUA_TTABLE );
+		// position 3 in the stack could be a function or a callable table, therefore it doesn't get checked
+	}
+	else if( lua_gettop( L ) == 2 ) // open( {settings}, event_handler() )
+	{
+		backend_from_settings = true;
+		luaL_checktype( L, 1, LUA_TTABLE );
+		// position 2 in the stack could be a function or a callable table, therefore it doesn't get checked
+	}
+	else
+	{
+		std::cerr << "Error: Invalid number of arguments to macrodevice.open()\n";
+		return 0;
+	}
+
 	// store callback function in Lua registry
 	//******************************************************************
 	registry_key = "macrodevice_callback_" + std::to_string( thread_number );
 	thread_number++;
 	
 	lua_pushstring( L, registry_key.c_str() ); // push key onto the stack
-	lua_pushvalue( L, 3 ); // push copy of the callback function onto the stack
+	lua_pushvalue( L, -2 ); // push copy of the callback function onto the stack
 	lua_settable( L, LUA_REGISTRYINDEX ); // set registry[key] = callback function
 	lua_pop( L, 1 ); // pop callback function from the stack
 	
@@ -291,6 +306,9 @@ int lua_open_device( lua_State *L )
 	
 	// determine backend and create thread
 	//******************************************************************
+	if( backend_from_settings )
+		backend = settings.at("backend");
+
 	lua_pop( L, 1 ); // pop backend from stack
 	if( backend == "hidapi" )
 	{

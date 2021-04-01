@@ -19,5 +19,10 @@ backend: string, settings: table, event_handler: function
 
 Opens the device specified by the settings table using the given backend. event_handler is the callback function that gets called for every incoming event.
 
+## ``macrodevice.open(settings, event_handler)``
+settings: table, event_handler: function
+
+Opens the device specified by the settings table using the backend from the "backend" field in the settings table. event_handler is the callback function that gets called for every incoming event.
+
 ## ``macrodevice.version``
 A string containing the version of macrodevice.
