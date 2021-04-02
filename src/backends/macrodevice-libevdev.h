@@ -67,7 +67,7 @@ class macrodevice::device_libevdev
 		struct pollfd m_pollfd[1];
 
 		/// poll timeout
-		int m_timeout = 1000;
+		int m_timeout = -1;
 
 	public:
 		
