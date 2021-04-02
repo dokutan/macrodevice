@@ -324,7 +324,7 @@ int lua_open_device( lua_State *L )
 	{
 		#ifdef USE_BACKEND_HIDAPI
 		device_threads.push_back( std::jthread( run_macros<macrodevice::device_hidapi>, macrodevice::device_hidapi(), L, settings, registry_key ) );
-		lua_pushinteger( L, devcice_threads.size()-1 );
+		lua_pushinteger( L, device_threads.size()-1 );
 		#else
 		std::cerr << "Error: Backend " << backend << " is not enabled\n";
 		#endif

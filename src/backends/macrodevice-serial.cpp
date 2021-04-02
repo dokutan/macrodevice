@@ -34,10 +34,10 @@ int macrodevice::device_serial::load_settings( const std::map< std::string, std:
 	}
 	catch( std::exception &e )
 	{
-		return 1;
+		return MACRODEVICE_FAILURE;
 	}
 	
-	return 0;
+	return MACRODEVICE_SUCCESS;
 }
 
 /**
@@ -49,14 +49,14 @@ int macrodevice::device_serial::open_device()
 	m_filedesc = open( m_port_path.c_str(), O_RDONLY|O_NOCTTY|O_SYNC );
 	if( m_filedesc < 0 )
 	{
-		return m_filedesc;
+		return MACRODEVICE_FAILURE;
 	}
 	
 	// set up polling
 	m_pollfd[0].fd = m_filedesc;
 	m_pollfd[0].events = POLLIN;
 	
-	return 0;
+	return MACRODEVICE_SUCCESS;
 }
 
 /**
@@ -67,7 +67,7 @@ int macrodevice::device_serial::close_device()
 	// close the serial port
 	close( m_filedesc );
 	
-	return 0;
+	return MACRODEVICE_SUCCESS;
 }
 
 /**
@@ -87,7 +87,7 @@ int macrodevice::device_serial::wait_for_event( std::vector< std::string > &even
 		// poll if no byte received
 		if( poll( m_pollfd, 1, -1 ) < 0 )
 		{
-			return 1;
+			return MACRODEVICE_FAILURE;
 		}
 	}
 	else if( num_received == 1 ) // single byte received
@@ -96,7 +96,7 @@ int macrodevice::device_serial::wait_for_event( std::vector< std::string > &even
 	}
 	else
 	{
-		return -1; // read failure
+		return MACRODEVICE_FAILURE; // read failure
 	}
 	
 	event.clear();
@@ -115,10 +115,10 @@ int macrodevice::device_serial::wait_for_event( std::vector< std::string > &even
 	// if read failure
 	if( num_received < 0 )
 	{
-		return 1;
+		return MACRODEVICE_FAILURE;
 	}
 	
 	event.push_back( received_message );
 	
-	return 0;
+	return MACRODEVICE_SUCCESS;
 }

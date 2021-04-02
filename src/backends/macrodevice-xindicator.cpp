@@ -31,7 +31,7 @@ int macrodevice::device_xindicator::load_settings( const std::map< std::string, 
 	// this prevents an unused parameter compiler warning
 	(void)settings;
 	
-	return 0;
+	return MACRODEVICE_SUCCESS;
 }
 
 /**
@@ -44,13 +44,13 @@ int macrodevice::device_xindicator::open_device()
 	m_display = XOpenDisplay( NULL ); // get display from DISPLAY environmental variable
 	
 	if( m_display == NULL )
-		return 1;
+		return MACRODEVICE_FAILURE;
 	
 	// select to receive indicator state events
 	if( XkbSelectEvents( m_display, XkbUseCoreKbd, XkbIndicatorStateNotifyMask, XkbIndicatorStateNotifyMask ) != True )
-		return 1;
+		return MACRODEVICE_FAILURE;
 	
-	return 0;
+	return MACRODEVICE_SUCCESS;
 }
 
 /**
@@ -62,7 +62,7 @@ int macrodevice::device_xindicator::close_device()
 	// close X Display
 	XCloseDisplay( m_display );
 	
-	return 0;
+	return MACRODEVICE_SUCCESS;
 }
 
 /**
@@ -92,12 +92,12 @@ int macrodevice::device_xindicator::wait_for_event( std::vector< std::string > &
 			else
 			{
 				// could not get indicator state
-				return 1;
+				return MACRODEVICE_FAILURE;
 			}
 			
 		}
 		
 	}
 	
-	return 0;
+	return MACRODEVICE_SUCCESS;
 }

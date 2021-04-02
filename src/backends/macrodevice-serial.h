@@ -62,20 +62,20 @@ class macrodevice::device_serial
 		 * Loads the device settings, e.g. serial port
 		 * Valid settings keys are: port
 		 * @param settings A map of settings keys to their values
-		 * @return 0 if successful, >0 if required settings are missing or invalid
+		 * @return MACRODEVICE_SUCCESS if successful, MACRODEVICE_FAILURE if required settings are missing or invalid
 		 */
 		int load_settings( const std::map< std::string, std::string > &settings );
 		
 		/**
 		 * Opens the device specified through load_settings
-		 * @return 0 if successful, !=0 if unsuccessful
+		 * @return MACRODEVICE_SUCCESS if successful, MACRODEVICE_FAILURE if unsuccessful
 		 * @see load_settings
 		 */
 		int open_device();
 		
 		/**
 		 * Closes the device opened by open_device
-		 * @return 0 if successful, !=0 if unsuccessful
+		 * @return MACRODEVICE_SUCCESS if successful, MACRODEVICE_FAILURE if unsuccessful
 		 * @see open_device
 		 */
 		int close_device();
@@ -83,7 +83,7 @@ class macrodevice::device_serial
 		/**
 		 * Waits for an event, i.e. keypress to occur
 		 * @param event The received event, typically of size == 1
-		 * @return 0 if successful, !=0 if unsuccessful
+		 * @return MACRODEVICE_SUCCESS if successful, MACRODEVICE_FAILURE if unsuccessful
 		 */
 		int wait_for_event( std::vector< std::string > &event );
 		

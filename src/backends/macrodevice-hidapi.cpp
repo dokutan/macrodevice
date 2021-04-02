@@ -34,10 +34,10 @@ int macrodevice::device_hidapi::load_settings( const std::map< std::string, std:
 	}
 	catch( std::exception &e )
 	{
-		return 1;
+		return MACRODEVICE_FAILURE;
 	}
 	
-	return 0;
+	return MACRODEVICE_SUCCESS;
 }
 
 /**
@@ -46,14 +46,10 @@ int macrodevice::device_hidapi::load_settings( const std::map< std::string, std:
 int macrodevice::device_hidapi::open_device()
 {
 	
-	int res = 0;
-	
 	// initialize the hidapi library
-	res = hid_init();
-	
-	if( res != 0 )
+	if( hid_init() != 0 )
 	{
-		return res;
+		return MACRODEVICE_FAILURE;
 	}
 	
 	// open the device
@@ -61,11 +57,11 @@ int macrodevice::device_hidapi::open_device()
 	
 	if( !m_device )
 	{
-		return 1;
+		return MACRODEVICE_FAILURE;
 	}
 	
 	
-	return 0;
+	return MACRODEVICE_SUCCESS;
 }
 
 /**
@@ -80,7 +76,7 @@ int macrodevice::device_hidapi::close_device()
 	// close the hidapi library
 	hid_exit();
 	
-	return 0;
+	return MACRODEVICE_SUCCESS;
 }
 
 /**
@@ -91,8 +87,7 @@ int macrodevice::device_hidapi::wait_for_event( std::vector< std::string > &even
 	
 	unsigned char buffer[65]; // for reading and writing to the device
 	unsigned char key_old = 0, key_new = 0;
-	int res = 0; // return value of this function
-	int func_res = 0; // return value from called functions
+	int res = MACRODEVICE_SUCCESS; // return value of this function
 	
 	// run until a keypress occurs
 	while( 1 )
@@ -101,21 +96,17 @@ int macrodevice::device_hidapi::wait_for_event( std::vector< std::string > &even
 		
 		// request device state
 		buffer[1] = 0x81;
-		func_res = hid_write( m_device, buffer, 65 );
-		
-		if( func_res < 0 )
+		if( hid_write( m_device, buffer, 65 ) < 0 )
 		{
-			res = func_res;
+			res = MACRODEVICE_FAILURE;
 			break;
 		}
 		
 		
 		// read requested state
-		func_res = hid_read( m_device, buffer, 65 );
-		
-		if( func_res < 0 )
+		if( hid_read( m_device, buffer, 65 ) < 0 )
 		{
-			res = func_res;
+			res = MACRODEVICE_FAILURE;
 			break;
 		}
 		

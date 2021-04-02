@@ -5,11 +5,11 @@ VERSION_STRING = "\"2.0\""
 DEFS += -D VERSION_STRING=$(VERSION_STRING)
 
 # backend selection, comment out following lines to disable backends
-#use_backend_hidapi = true
+use_backend_hidapi = true
 use_backend_libevdev = true
-#use_backend_libusb = true
-#use_backend_serial = true
-#use_backend_xindicator = true
+use_backend_libusb = true
+use_backend_serial = true
+use_backend_xindicator = true
 
 # variables
 BIN_DIR = /usr/bin

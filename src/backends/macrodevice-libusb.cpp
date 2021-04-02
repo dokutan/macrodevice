@@ -77,10 +77,10 @@ int macrodevice::device_libusb::load_settings( const std::map< std::string, std:
 	}
 	catch( std::exception &e )
 	{
-		return 1;
+		return MACRODEVICE_FAILURE;
 	}
 	
-	return 0;
+	return MACRODEVICE_SUCCESS;
 }
 
 /**
@@ -88,13 +88,10 @@ int macrodevice::device_libusb::load_settings( const std::map< std::string, std:
  */
 int macrodevice::device_libusb::open_device()
 {
-	int res = 0;
-	
 	// libusb init
-	res = libusb_init( NULL );
-	if( res < 0 )
+	if( libusb_init( NULL ) < 0 )
 	{
-		return res;
+		return MACRODEVICE_FAILURE;
 	}
 	
 	// open device
@@ -106,7 +103,7 @@ int macrodevice::device_libusb::open_device()
 		
 		if( num_devs < 0 )
 		{
-			return 1;
+			return MACRODEVICE_FAILURE;
 		}
 		
 		// iterate over device list
@@ -118,7 +115,7 @@ int macrodevice::device_libusb::open_device()
 				// open device
 				if( libusb_open( dev_list[i], &m_device ) != 0 )
 				{
-					return 1;
+					return MACRODEVICE_FAILURE;
 				}
 				else
 				{
@@ -136,33 +133,30 @@ int macrodevice::device_libusb::open_device()
 		m_device = libusb_open_device_with_vid_pid( NULL, m_vid, m_pid );
 		if( !m_device )
 		{
-			return 1;
+			return MACRODEVICE_FAILURE;
 		}
 	}
 	
 	// detach kernel driver on interface 0 if active 
 	if( libusb_kernel_driver_active( m_device, 0 ) )
 	{
-		res = libusb_detach_kernel_driver( m_device, 0 );
-		
-		if( res == 0 )
+		if( libusb_detach_kernel_driver( m_device, 0 ) == 0 )
 		{
 			m_detached_kernel_driver = true;
 		}
 		else
 		{
-			return res;
+			return MACRODEVICE_FAILURE;
 		}
 	}
 	
 	// claim interface 0
-	res = libusb_claim_interface( m_device, 0 );
-	if( res != 0 )
+	if( libusb_claim_interface( m_device, 0 ) != 0 )
 	{
-		return res;
+		return MACRODEVICE_FAILURE;
 	}
 	
-	return 0;
+	return MACRODEVICE_SUCCESS;
 }
 
 /**
@@ -171,7 +165,7 @@ int macrodevice::device_libusb::open_device()
 int macrodevice::device_libusb::close_device()
 {
 	if( m_device == NULL )
-		return 1;
+		return MACRODEVICE_FAILURE;
 	
 	// release interface 0
 	libusb_release_interface( m_device, 0 );
@@ -185,7 +179,7 @@ int macrodevice::device_libusb::close_device()
 	// exit libusb
 	libusb_exit( NULL );
 	
-	return 0;
+	return MACRODEVICE_SUCCESS;
 }
 
 /**
@@ -196,16 +190,14 @@ int macrodevice::device_libusb::wait_for_event( std::vector< std::string > &even
 	uint8_t buffer[8]; // usb data buffer
 	unsigned char key_old=0, key_new=0;
 	int transferred; // number of bytes transferred
-	int func_res = 0; // return value of called functions
 	
 	while( 1 )
 	{
 		
 		// read from endpoint 1
-		func_res = libusb_interrupt_transfer( m_device, 0x81, buffer, 8, &transferred, -1 );
-		if( func_res != 0 || transferred == 0 )
+		if( libusb_interrupt_transfer( m_device, 0x81, buffer, 8, &transferred, -1 ) != 0 || transferred == 0 )
 		{
-			return func_res;
+			return MACRODEVICE_FAILURE;
 		}
 		
 		
@@ -224,5 +216,5 @@ int macrodevice::device_libusb::wait_for_event( std::vector< std::string > &even
 		
 	}
 	
-	return 0;
+	return MACRODEVICE_SUCCESS;
 }
