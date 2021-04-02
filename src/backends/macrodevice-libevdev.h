@@ -65,27 +65,30 @@ class macrodevice::device_libevdev
 		bool m_numbers = false;
 		
 		struct pollfd m_pollfd[1];
-		
+
+		/// poll timeout
+		int m_timeout = 1000;
+
 	public:
 		
 		/**
 		 * Loads the device settings, e.g. eventfile
 		 * Valid settings keys are: eventfile
 		 * @param settings A map of settings keys to their values
-		 * @return 0 if successful, >0 if required settings are missing or invalid
+		 * @return MACRODEVICE_SUCCESS or MACRODEVICE_FAILURE
 		 */
 		int load_settings( const std::map< std::string, std::string > &settings );
 		
 		/**
 		 * Opens the device specified through load_settings
-		 * @return 0 if successful, !=0 if unsuccessful
+		 * @return MACRODEVICE_SUCCESS or MACRODEVICE_FAILURE
 		 * @see load_settings
 		 */
 		int open_device();
 		
 		/**
 		 * Closes the device opened by open_device
-		 * @return 0 if successful, !=0 if unsuccessful
+		 * @return MACRODEVICE_SUCCESS or MACRODEVICE_FAILURE
 		 * @see open_device
 		 */
 		int close_device();
@@ -93,7 +96,7 @@ class macrodevice::device_libevdev
 		/**
 		 * Waits for an event, i.e. keypress to occur
 		 * @param event The received event, typically of size == 3
-		 * @return 0 if successful, !=0 if unsuccessful
+		 * @return MACRODEVICE_SUCCESS, MACRODEVICE_FAILURE or MACRODEVICE_TIMEOUT
 		 */
 		int wait_for_event( std::vector< std::string > &event );
 		

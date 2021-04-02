@@ -25,6 +25,10 @@
 #include <string>
 #include <locale>
 
+#define MACRODEVICE_SUCCESS 0
+#define MACRODEVICE_TIMEOUT -1
+#define MACRODEVICE_FAILURE 1
+
 namespace macrodevice
 {
 	

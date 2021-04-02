@@ -42,6 +42,8 @@ extern "C"
 #include <lualib.h>
 }
 
+#include "backends/helpers.h"
+
 // version defined in makefile
 #ifndef VERSION_STRING
 #define VERSION_STRING "undefined"
@@ -86,7 +88,7 @@ Licensed under the GNU GPL v3 or later
 // global variables
 //**********************************************************************
 /// Threads for event handling, one thread per device
-std::vector<std::thread> device_threads;
+std::vector<std::jthread> device_threads;
 
 /// Used as an identifier for each thread
 int thread_number = 0;
@@ -124,7 +126,7 @@ int drop_root( uid_t uid, gid_t gid )
 // functions
 //**********************************************************************
 /// Thread function to open a specified device and pass the incoming events to the callback function
-template< class T > int run_macros( T device, lua_State *L, std::map<std::string, std::string> settings, std::string callback_registry_key )
+template< class T > int run_macros( std::stop_token st, T device, lua_State *L, std::map<std::string, std::string> settings, std::string callback_registry_key )
 {
 	// pass settings to the device object
 	//******************************************************************
@@ -144,55 +146,63 @@ template< class T > int run_macros( T device, lua_State *L, std::map<std::string
 	//******************************************************************
 	std::vector< std::string > event;
 	std::string lua_return;
-	while( 1 )
+
+	while( !st.stop_requested() )
 	{
-		event.clear();
-		if( device.wait_for_event( event ) != 0 )
+		int status = device.wait_for_event( event );
+
+		if( status == MACRODEVICE_FAILURE )
 		{
 			std::cerr << "Warning : could not get input event\n";
 			continue;
 		}
-		
-		// process input event
-		//******************************************************************
-		
-		// lock lua mutex
-		const std::lock_guard<std::mutex> lock( mutex_lua );
-		
-		// load callback function onto the stack
-		lua_pushstring( L, callback_registry_key.c_str() ); // push key onto the stack
-		lua_gettable( L, LUA_REGISTRYINDEX ); // push registry["callback_registry_key"] onto the stack
-		
-		lua_newtable( L ); // create new table at the top of the stack
-		for( unsigned int i = 0; i < event.size(); i++ ){
-			lua_pushnumber( L, i+1 ); // push table index
-			lua_pushstring( L, event.at(i).c_str() ); // push table value
-			lua_settable( L, -3 );
-		}
-		
-		// call lua callback function
-		if( lua_pcall( L, 1, 1, 0 ) != 0 ){
-			std::cerr << "An error occured: " << lua_tostring( L, -1 ) << "\n";
-			lua_remove( L, -1 );  // remove top value from stack
-			device.close_device();
-			return 1;
-		}
-		
-		// get return value from lua callback function
-		if( lua_isstring( L, -1 ) )
+		else if( status == MACRODEVICE_TIMEOUT )
 		{
-			lua_return = lua_tostring( L, -1 );
+			continue;
+		}
+		else if( status == MACRODEVICE_SUCCESS )
+		{
+			// process input event
+			//******************************************************************
 			
-			//quit if requested by lua
-			if( lua_return == "quit" )
-			{
-				break;
+			// lock lua mutex
+			const std::lock_guard<std::mutex> lock( mutex_lua );
+			
+			// load callback function onto the stack
+			lua_pushstring( L, callback_registry_key.c_str() ); // push key onto the stack
+			lua_gettable( L, LUA_REGISTRYINDEX ); // push registry["callback_registry_key"] onto the stack
+			
+			lua_newtable( L ); // create new table at the top of the stack
+			for( unsigned int i = 0; i < event.size(); i++ ){
+				lua_pushnumber( L, i+1 ); // push table index
+				lua_pushstring( L, event.at(i).c_str() ); // push table value
+				lua_settable( L, -3 );
 			}
 			
+			// call lua callback function
+			if( lua_pcall( L, 1, 1, 0 ) != 0 ){
+				std::cerr << "An error occured: " << lua_tostring( L, -1 ) << "\n";
+				lua_remove( L, -1 );  // remove top value from stack
+				device.close_device();
+				return 1;
+			}
+			
+			// get return value from lua callback function
+			if( lua_isstring( L, -1 ) )
+			{
+				lua_return = lua_tostring( L, -1 );
+				
+				//quit if requested by lua
+				if( lua_return == "quit" )
+				{
+					break;
+				}
+				
+			}
+			
+			// remove function return value from stack
+			lua_remove( L, -1 );
 		}
-		
-		// remove function return value from stack
-		lua_remove( L, -1 );
 		
 	}
 	
@@ -254,7 +264,8 @@ int lua_open_device( lua_State *L )
 	else
 	{
 		std::cerr << "Error: Invalid number of arguments to macrodevice.open()\n";
-		return 0;
+		lua_pushnil( L );
+		return 1;
 	}
 
 	// store callback function in Lua registry
@@ -312,7 +323,8 @@ int lua_open_device( lua_State *L )
 	if( backend == "hidapi" )
 	{
 		#ifdef USE_BACKEND_HIDAPI
-		device_threads.push_back( std::thread( run_macros<macrodevice::device_hidapi>, macrodevice::device_hidapi(), L, settings, registry_key ) );
+		device_threads.push_back( std::jthread( run_macros<macrodevice::device_hidapi>, macrodevice::device_hidapi(), L, settings, registry_key ) );
+		lua_pushinteger( L, devcice_threads.size()-1 );
 		#else
 		std::cerr << "Error: Backend " << backend << " is not enabled\n";
 		#endif
@@ -320,7 +332,8 @@ int lua_open_device( lua_State *L )
 	else if( backend == "libevdev" )
 	{
 		#ifdef USE_BACKEND_LIBEVDEV
-		device_threads.push_back( std::thread( run_macros<macrodevice::device_libevdev>, macrodevice::device_libevdev(), L, settings, registry_key ) );
+		device_threads.push_back( std::jthread( run_macros<macrodevice::device_libevdev>, macrodevice::device_libevdev(), L, settings, registry_key ) );
+		lua_pushinteger( L, device_threads.size()-1 );
 		#else
 		std::cerr << "Error: Backend " << backend << " is not enabled\n";
 		#endif
@@ -328,7 +341,8 @@ int lua_open_device( lua_State *L )
 	else if( backend == "libusb" )
 	{
 		#ifdef USE_BACKEND_LIBUSB
-		device_threads.push_back( std::thread( run_macros<macrodevice::device_libusb>, macrodevice::device_libusb(), L, settings, registry_key ) );
+		device_threads.push_back( std::jthread( run_macros<macrodevice::device_libusb>, macrodevice::device_libusb(), L, settings, registry_key ) );
+		lua_pushinteger( L, device_threads.size()-1 );
 		#else
 		std::cerr << "Error: Backend " << backend << " is not enabled\n";
 		#endif
@@ -336,7 +350,8 @@ int lua_open_device( lua_State *L )
 	else if( backend == "serial" )
 	{
 		#ifdef USE_BACKEND_SERIAL
-		device_threads.push_back( std::thread( run_macros<macrodevice::device_serial>, macrodevice::device_serial(), L, settings, registry_key ) );
+		device_threads.push_back( std::jthread( run_macros<macrodevice::device_serial>, macrodevice::device_serial(), L, settings, registry_key ) );
+		lua_pushinteger( L, device_threads.size()-1 );
 		#else
 		std::cerr << "Error: Backend " << backend << " is not enabled\n";
 		#endif
@@ -344,7 +359,8 @@ int lua_open_device( lua_State *L )
 	else if( backend == "xindicator" )
 	{
 		#ifdef USE_BACKEND_XINDICATOR
-		device_threads.push_back( std::thread( run_macros<macrodevice::device_xindicator>, macrodevice::device_xindicator(), L, settings, registry_key ) );
+		device_threads.push_back( std::jthread( run_macros<macrodevice::device_xindicator>, macrodevice::device_xindicator(), L, settings, registry_key ) );
+		lua_pushinteger( L, device_threads.size()-1 );
 		#else
 		std::cerr << "Error: Backend " << backend << " is not enabled\n";
 		#endif
@@ -352,8 +368,38 @@ int lua_open_device( lua_State *L )
 	else
 	{
 		std::cerr << "Error: Invalid backend\n";
+		lua_pushnil( L );
 	}
 	
+	return 1;
+}
+
+/// Lua function to request closing a single or all device(s)
+int lua_close_device( lua_State *L )
+{
+	// close a single device
+	if( lua_gettop( L ) == 1 ){
+
+		// get argument
+		size_t id = luaL_checkinteger( L, -1 );
+		lua_remove( L, -1 );
+
+		if( id < device_threads.size() )
+			device_threads.at(id).request_stop();
+	}
+
+	// close all devices
+	else if( lua_gettop( L ) == 0 )
+	{
+		for( auto &t : device_threads )
+			t.request_stop();
+	}
+
+	else
+	{
+		std::cerr << "Error: Invalid number of arguments to macrodevice.close()\n";
+	}
+
 	return 0;
 }
 
@@ -364,6 +410,10 @@ inline void lua_register_macrodevice( lua_State *L, std::vector< std::string > &
 
     lua_pushstring( L, "open" ); // index
     lua_pushcfunction( L, lua_open_device ); // value
+    lua_settable( L, -3 ); // table[index] = value, pops index and value
+
+	lua_pushstring( L, "close" ); // index
+    lua_pushcfunction( L, lua_close_device ); // value
     lua_settable( L, -3 ); // table[index] = value, pops index and value
 
     lua_pushstring( L, "drop_root" ); // index
@@ -484,7 +534,7 @@ int main( int argc, char *argv[] )
 				return 1;
 			}	
 		}
-		
+
 		// wait for all threads to join
 		//**************************************************************
 		for( auto &t : device_threads )

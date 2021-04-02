@@ -31,22 +31,26 @@ int macrodevice::device_libevdev::load_settings( const std::map< std::string, st
 	{
 		m_eventfile_path = settings.at( "eventfile" );
 		
-		if( settings.find( "grab" ) != settings.end() )
+		if( settings.contains( "grab" ) )
 		{
 			m_grab = macrodevice::string_to_bool( settings.at( "grab" ), true );
 		}
-		if( settings.find( "numbers" ) != settings.end() )
+		if( settings.contains( "numbers" ) )
 		{
 			m_numbers = macrodevice::string_to_bool( settings.at( "numbers" ), true );
+		}
+		if( settings.contains( "timeout" ) )
+		{
+			m_timeout = std::stoi( settings.at( "timeout" ) );
 		}
 		
 	}
 	catch( std::exception &e )
 	{
-		return 1;
+		return MACRODEVICE_FAILURE;
 	}
 	
-	return 0;
+	return MACRODEVICE_SUCCESS;
 }
 
 /**
@@ -54,20 +58,17 @@ int macrodevice::device_libevdev::load_settings( const std::map< std::string, st
  */
 int macrodevice::device_libevdev::open_device()
 {
-	int res = 0;
-	
 	// open eventfile
 	m_filedesc = open( m_eventfile_path.c_str(), O_RDONLY|O_NONBLOCK );
 	if( m_filedesc < 0 )
 	{
-		return m_filedesc;
+		return MACRODEVICE_FAILURE;
 	}
 	
 	// create libevdev device
-	res = libevdev_new_from_fd( m_filedesc, &m_device );
-	if( res < 0 )
+	if( libevdev_new_from_fd( m_filedesc, &m_device ) < 0 )
 	{
-		return res;
+		return MACRODEVICE_FAILURE;
 	}
 	
 	// set up polling
@@ -77,14 +78,13 @@ int macrodevice::device_libevdev::open_device()
 	// grab device (no input to other programs)
 	if( m_grab )
 	{
-		res = libevdev_grab( m_device, LIBEVDEV_GRAB );
-		if( res < 0 )
+		if( libevdev_grab( m_device, LIBEVDEV_GRAB ) < 0 )
 		{
-			return res;
+			return MACRODEVICE_FAILURE;
 		}
 	}
 	
-	return 0;
+	return MACRODEVICE_SUCCESS;
 }
 
 /**
@@ -98,7 +98,7 @@ int macrodevice::device_libevdev::close_device()
 	// free the device
 	libevdev_free( m_device );
 	
-	return 0;
+	return MACRODEVICE_SUCCESS;
 }
 
 /**
@@ -109,12 +109,17 @@ int macrodevice::device_libevdev::wait_for_event( std::vector< std::string > &ev
 	
 	struct input_event libevdev_event;
 	
-	// wait for change in /dev/input/event* (no timeout)
+	// wait for change in /dev/input/event* if no events are pending
 	if( libevdev_has_event_pending( m_device ) == 0 )
 	{
-		if( poll( m_pollfd, 1, -1 ) < 0 )
+		int p = poll( m_pollfd, 1, m_timeout );
+		if( p < 0 )
 		{
-			return 1;
+			return MACRODEVICE_FAILURE;
+		}
+		else if( p == 0 )
+		{
+			return MACRODEVICE_TIMEOUT;
 		}
 	}
 	
@@ -164,8 +169,8 @@ int macrodevice::device_libevdev::wait_for_event( std::vector< std::string > &ev
 			
 		}
 		
-		return 0;
+		return MACRODEVICE_SUCCESS;
 	}
 	
-	return 1;
+	return MACRODEVICE_FAILURE;
 }

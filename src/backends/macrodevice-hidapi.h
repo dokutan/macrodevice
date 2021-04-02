@@ -29,6 +29,8 @@
 
 #include </usr/include/hidapi/hidapi.h>
 
+#include "helpers.h"
+
 namespace macrodevice
 {
 	class device_hidapi;

@@ -5,18 +5,18 @@ VERSION_STRING = "\"2.0\""
 DEFS += -D VERSION_STRING=$(VERSION_STRING)
 
 # backend selection, comment out following lines to disable backends
-use_backend_hidapi = true
+#use_backend_hidapi = true
 use_backend_libevdev = true
-use_backend_libusb = true
-use_backend_serial = true
-use_backend_xindicator = true
+#use_backend_libusb = true
+#use_backend_serial = true
+#use_backend_xindicator = true
 
 # variables
 BIN_DIR = /usr/bin
 DOC_DIR = /usr/share/doc
 MAN_DIR = /usr/share/man/man1
 CC = g++
-CC_OPTIONS = -Wall -Wextra -O2 
+CC_OPTIONS = -Wall -Wextra -O2 -std=c++20
 LIBS = -llua -pthread
 
 # change compiler options according to backend selection

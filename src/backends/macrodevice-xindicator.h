@@ -29,6 +29,8 @@
 
 #include <X11/XKBlib.h> // Xlib
 
+#include "helpers.h"
+
 namespace macrodevice
 {
 	class device_xindicator;

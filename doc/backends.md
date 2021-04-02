@@ -21,6 +21,7 @@ setting key | description |  required? | default
 eventfile | the path to the eventfile, e.g. /dev/input/event1 | required | 
 grab | block input from the device to other programs, "true" or "false" | optional | true
 numbers | don't convert the numeric event values to strings, "true" or "false" | optional | false
+timeout | the polling timeout in ms, -1 for no timeout | optional | 1000
 ### Event description
 1. event type
 2. event code
