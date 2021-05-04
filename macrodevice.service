@@ -1,0 +1,9 @@
+[Unit]
+Description=macrodevice-lua
+
+[Service]
+ExecStart=/usr/bin/macrodevice-lua -c /path/to/your/config.lua
+
+[Install]
+WantedBy=graphical.target
+

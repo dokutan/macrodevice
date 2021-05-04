@@ -44,6 +44,12 @@ To easily create the input handler function for your lua script, edit ``examples
 macrodevice-lua -c examples/create-config.lua
 ```
 
+### Starting automatically
+If you want the program to be started when logging in and are using systemd:
+1. edit ``macrodevice.service`` to include the correct path to your config
+2. copy it to ``~/.config/systemd/user/``
+3. run ``systemctl --user enable --now macrodevice.service``
+
 ### Dealing with permissions
 In most cases root privileges are needed to directly open an input device, however running this program as root creates a major security risk, as all macros are executed with root privileges as well. There are multiple ways to deal with this problem.
 
