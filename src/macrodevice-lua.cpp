@@ -34,6 +34,10 @@
 #include <unistd.h> // for fork
 #include <pwd.h> // for getpwnam
 
+#ifdef __linux__
+#include <grp.h> // for setgroups()
+#endif
+
 // lua libraries
 extern "C"
 {
@@ -105,11 +109,18 @@ int drop_root( uid_t uid, gid_t gid )
 	// important: set gid before uid
 	if( getuid() == 0 ) // check if root
 	{
-		if( setregid( gid, gid ) != 0 ) // set real and effective gid
+		#ifdef __linux__
+		if( setgroups(0, NULL) != 0 ) // drop supplementary groups
+		{
+			return 2;
+		}
+		#endif
+
+		if( setgid( gid ) != 0 ) // set gid
 		{
 			return 1;
 		}
-		if( setreuid( uid, uid ) != 0 ) // set real and effective uid
+		if( setuid( uid ) != 0 ) // set uid
 		{
 			return 1;
 		}
