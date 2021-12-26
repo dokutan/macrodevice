@@ -12,6 +12,7 @@ settings = {
 
 -- Edit this table to configure the macros.
 -- Functions get called, strings passed to os.execute().
+-- It is strongly recommended to add "&" to the end of commands to prevent blocking.
 keymap = {
     ["down:KEY_ESC"] = macrodevice.close, -- request closing all opened devices
     ["down:KEY_A"] = "echo 'pressed a'",

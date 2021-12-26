@@ -24,17 +24,17 @@ function input_handler( event )
 	
 	-- execute commands
 	if event[2] == 58 then -- this won't work
-		os.execute( "mpc toggle" )
+		os.execute( "mpc toggle &" )
 	end
 	
 	if event[2] == "58" then -- this does
-		os.execute( "mpc toggle" ) -- F1
+		os.execute( "mpc toggle &" ) -- F1
 	end
 	if event[2] == "59" then
-		os.execute( "mpc prev" ) -- F2
+		os.execute( "mpc prev &" ) -- F2
 	end
 	if event[2] == "60" then
-		os.execute( "mpc next" ) -- F3
+		os.execute( "mpc next &" ) -- F3
 	end
 	
 	-- when this function returns "quit", the device gets closed
