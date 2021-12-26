@@ -45,9 +45,9 @@ macrodevice-lua -c examples/create-config.lua
 ```
 
 ### Starting automatically
-If you want the program to be started when logging in and are using systemd:
+If you want the program to be started automatically and are using systemd:
 1. edit ``macrodevice.service`` to include the correct path to your config
-2. copy it to ``~/.config/systemd/user/``
+2. copy it to ``~/.config/systemd/user/macrodevice.service``
 3. run ``systemctl --user enable --now macrodevice.service``
 
 ### Dealing with permissions

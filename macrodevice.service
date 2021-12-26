@@ -2,8 +2,9 @@
 Description=macrodevice-lua
 
 [Service]
+Type=simple
 ExecStart=/usr/bin/macrodevice-lua -c /path/to/your/config.lua
 
 [Install]
-WantedBy=graphical.target
+WantedBy=default.target
 
