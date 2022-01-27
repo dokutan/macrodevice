@@ -65,4 +65,4 @@ In most cases root privileges are needed to directly open an input device, howev
 ## License
 This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
 
-Fennel (src/fennel.lua) is licensed under MIT/X11 license. See Fennel.LICENSE for the full license.
+Fennel (src/fennel.lua) is licensed under the MIT/X11 license. See Fennel.LICENSE for the full license.
