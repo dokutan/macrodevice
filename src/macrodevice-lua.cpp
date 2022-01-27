@@ -53,6 +53,8 @@ extern "C"
 #define VERSION_STRING "undefined"
 #endif
 
+// the default path for fennel.lua, formatted for lua package.searchpath
+#define FENNEL_PATH "/usr/share/macrodevice/?.lua"
 
 // backends
 //**********************************************************************
@@ -80,10 +82,11 @@ extern "C"
 //**********************************************************************
 const std::string help_message = R"(macrodevice-lua options:
 
--h --help    print this message
--c --config  lua file to be loaded (required)
--f --fork    fork into the background
--a --arg     pass the next argument to Lua
+-h --help     print this message
+-c --config   lua or fennel file to be loaded (required)
+-l --language set the language of the config file ('lua'|'fennel'|'auto')
+-f --fork     fork into the background
+-a --arg      pass the next argument to Lua
 
 Licensed under the GNU GPL v3 or later
 )";
@@ -464,16 +467,17 @@ int main( int argc, char *argv[] )
 			{"config", required_argument, 0, 'c'},
 			{"fork", no_argument, 0, 'f'},
 			{"arg", required_argument, 0, 'a'},
+			{"language", optional_argument, 0, 'l'},
 			{0, 0, 0, 0}
 		};
 		
 		// parse commandline options
 		int c, option_index = 0;
 		bool flag_fork = false, flag_config = false;
-		std::string string_config, string_user, string_group;
+		std::string string_config, string_language = "lua";
 		std::vector< std::string > lua_args;
 			
-		while( (c = getopt_long( argc, argv, "hc:fa:", long_options, &option_index ) ) != -1 )
+		while( (c = getopt_long( argc, argv, "hc:fa:l:", long_options, &option_index ) ) != -1 )
 		{
 			switch( c )
 			{
@@ -491,6 +495,9 @@ int main( int argc, char *argv[] )
 				case 'a':
 					lua_args.push_back( optarg );
 					break;
+				case 'l':
+					string_language = optarg;
+					break;
 				case '?':
 					return 1;
 					break;
@@ -499,10 +506,33 @@ int main( int argc, char *argv[] )
 			}
 		}
 		
-		// is a lua file specified ?
+		// is a config file specified ?
 		if( !flag_config )
 		{
 			std::cerr << "Missing argument -c, run " << argv[0] << " -h for help\n";
+			return 1;
+		}
+
+		// determine the language of the config file
+		if( string_language == "auto" )
+		{
+			if( string_config.ends_with(".lua") )
+			{
+				string_language = "lua";
+			}
+			else if( string_config.ends_with(".fnl") )
+			{
+				string_language = "fennel";
+			}
+			else
+			{
+				std::cerr << "Could not identify the config file language, set a language with the -l option.\n";
+				return 1;
+			}
+		}
+
+		if( string_language != "lua" and string_language != "fennel" ){
+			std::cerr << "Unknown language: " << string_language << ", supported are 'lua' and 'fennel'.\n";
 			return 1;
 		}
 		
@@ -536,14 +566,30 @@ int main( int argc, char *argv[] )
 			// lock lua mutex
 			const std::lock_guard<std::mutex> lock( mutex_lua );
 			
-			// load and run lua file
-			if( luaL_loadfile( L, string_config.c_str() ) || lua_pcall( L, 0, 0, 0 ) )
+			// load and run the config file
+			if( string_language == "lua" ){
+				if( luaL_loadfile( L, string_config.c_str() ) || lua_pcall( L, 0, 0, 0 ) )
+				{
+					std::cerr << "Error in Lua: " << lua_tostring( L, -1 ) << "\n";
+					lua_remove( L, -1 ); // remove top value from stack
+					lua_close( L );
+					return 1;
+				}
+			}
+			else if( string_language == "fennel" )
 			{
-				std::cerr << "Error in Lua: " << lua_tostring( L, -1 ) << "\n";
-				lua_remove( L, -1 ); // remove top value from stack
-				lua_close( L );
-				return 1;
-			}	
+				if( luaL_dostring( L, std::string(
+					"package.path = \"" FENNEL_PATH "\"..package.path\n"
+					"local fennel = require(\"fennel\")\n"
+					"fennel.dofile(\"" +  string_config + "\")\n"
+				).c_str()) )
+				{
+					std::cerr << "Error in Lua: " << lua_tostring( L, -1 ) << "\n";
+					lua_remove( L, -1 ); // remove top value from stack
+					lua_close( L );
+					return 1;
+				}
+			}
 		}
 
 		// wait for all threads to join

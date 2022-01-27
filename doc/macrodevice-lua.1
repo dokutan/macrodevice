@@ -15,7 +15,10 @@ Open an input device and call a lua script to execute commands when an event occ
 Print a help message.
 .TP
 \fB\-c\fR, \fB\-\-config\fR=\fIFILE\fR
-The lua script that should be loaded.
+The lua or fennel script that should be loaded.
+.TP
+\fB-l\fR, \fB\-\-language\fR=\fILANGUAGE\fR
+The language of the config file. Supported are 'lua', 'fennel', 'auto' (the file extension is used to determine the language).
 .TP
 \fB\-f\fR, \fB\-\-fork\fR
 Fork into the background.

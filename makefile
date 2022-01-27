@@ -14,6 +14,7 @@ use_backend_xindicator = true
 # variables
 BIN_DIR = /usr/bin
 DOC_DIR = /usr/share/doc
+SHARE_DIR = /usr/share
 MAN_DIR = /usr/share/man/man1
 CC = g++
 CC_OPTIONS = -Wall -Wextra -O2 -std=c++20
@@ -55,14 +56,17 @@ clean:
 install:
 	cp ./macrodevice-lua $(BIN_DIR)/macrodevice-lua
 	cp ./doc/macrodevice-lua.1 $(MAN_DIR)
-	mkdir $(DOC_DIR)/macrodevice | true
+	mkdir -p $(DOC_DIR)/macrodevice 
+	mkdir -p $(SHARE_DIR)/macrodevice
 	cp ./examples/example.lua $(DOC_DIR)/macrodevice
 	cp ./doc/backends.md $(DOC_DIR)/macrodevice
 	cp ./doc/api.md $(DOC_DIR)/macrodevice
+	cp ./src/fennel.lua $(SHARE_DIR)/macrodevice
 
 uninstall:
 	rm -f $(BIN_DIR)/macrodevice-lua
 	rm -rf $(DOC_DIR)/macrodevice
+	rm -rf $(SHARE_DIR)/macrodevice
 	rm -f $(MAN_DIR)/macrodevice-lua.1
 
 # individual .cpp files
