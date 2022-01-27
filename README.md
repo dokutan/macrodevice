@@ -2,7 +2,7 @@
 Turn any input device into a dedicated macrodevice. This is a rewrite of [macroKeyboard](https://github.com/dokutan/macroKeyboard).
 
 ## What is the purpose of this program?
-This program is designed to execute a command at the press of a button (or other input) from a dedicated device (e.g keyboard, gamepad, Arduino (over serial), keyboard indicators, etc.). The configuration is done in Lua, so a complex configuration is possible. It is possible to open multiple devices simultaneously.
+This program is designed to execute a command at the press of a button (or other input) from a dedicated device (e.g keyboard, gamepad, Arduino (over serial), keyboard indicators, etc.). The configuration is done in [Lua](https://www.lua.org/) or [Fennel](https://fennel-lang.org/), so a complex configuration is possible. It is possible to open multiple devices simultaneously.
 
 ## Installing
 - Install all dependencies (on some distros you might need a dev package for the header files)
@@ -35,11 +35,16 @@ Run in the background
 macrodevice-lua -c your-config.lua -f
 ```
 
-### Lua config
+Specify the language of your config if you are using Fennel
+```
+macrodevice-lua -l fennel -c your-config.fnl
+```
 
-To handle the incoming events and execute commands a Lua script is needed. For the details look at ``examples/example.lua`` and ``doc/api.md``.
+### Config
 
-To easily create the input handler function for your lua script, edit ``examples/create-config.lua`` and execute
+To handle the incoming events and execute commands a Lua or Fennel script is needed. For the details look at the files in ``examples`` and ``doc/api.md``.
+
+To easily create the input handler function for your Lua script, edit ``examples/create-config.lua`` and execute
 ```
 macrodevice-lua -c examples/create-config.lua
 ```
@@ -59,3 +64,5 @@ In most cases root privileges are needed to directly open an input device, howev
 
 ## License
 This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
+
+Fennel (src/fennel.lua) is licensed under MIT/X11 license. See Fennel.LICENSE for the full license.

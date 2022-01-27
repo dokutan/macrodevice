@@ -61,6 +61,7 @@ install:
 	cp ./examples/example.lua $(DOC_DIR)/macrodevice
 	cp ./doc/backends.md $(DOC_DIR)/macrodevice
 	cp ./doc/api.md $(DOC_DIR)/macrodevice
+	cp ./*LICENSE $(DOC_DIR)/macrodevice
 	cp ./src/fennel.lua $(SHARE_DIR)/macrodevice
 
 uninstall:

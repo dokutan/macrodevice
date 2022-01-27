@@ -54,7 +54,7 @@ extern "C"
 #endif
 
 // the default path for fennel.lua, formatted for lua package.searchpath
-#define FENNEL_PATH "/usr/share/macrodevice/?.lua"
+#define FENNEL_PATH "/usr/share/macrodevice/?.lua;"
 
 // backends
 //**********************************************************************
